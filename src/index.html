@@ -64,10 +64,10 @@
     audioExplosion.src = "hit.wav";
     audioExplosion.preload = "auto";
 
-    var audioThrust = document.createElement("audio");
-    audioThrust.src = "thrust.ogg";
-    audioThrust.preload = "auto";
-    audioThrust.loop = true;
+    var audioWarning = document.createElement("audio");
+    audioWarning.src = "warning.wav";
+    audioWarning.preload = "auto";
+    audioWarning.loop = false;
 
     var audioScoop = document.createElement("audio");
     audioScoop.src = "scoop.wav";
@@ -79,11 +79,9 @@
       switch(id) {
           case 1:  audioExplosion.play();
                    break;
-          case 2:  audioThrust.play();
+          case 2:  audioWarning.play();
                    break;
           case 3:  audioScoop.play();
-                   break;
-          case -2: audioThrust.pause();
                    break;
           default: console.log("BAD SOUND IS "+id);
       }
@@ -117,11 +115,13 @@
 </div>
 <div style="float:right;">
     <div class="fixed">
-        <p>Arrow keys to control lander</p>
-        <p>Left shift for thrust</p>
-        <p>Change north/south/east/west view around craft with N S E W keys</p>
+        <p>left right to steer</p>
+        <p>space to break</p>
+        <p>up forward gear, down reverse</p>
+        <p>change direction when stopped</p>
+        <p>Change north/south/east/west view around bus with N S E W keys</p>
     </div>
 </div>
-<script src='car-rust.js'></script>
+<script src='bus-zombie-rust.js'></script>
 </body>
 </html>

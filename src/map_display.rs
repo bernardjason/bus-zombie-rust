@@ -308,7 +308,6 @@ impl MapDisplay {
             gl.BindTexture(gl::TEXTURE_2D, self.texture);
             gl.BindVertexArray(self.vao);
 
-            //let map_offset = vec3(position_map.x *1.373 , position_map.y*2.24,0.0) ;//+ vec3(-player_image_size,player_image_size,0.0) ;
             for x in -1..2 {
                 for y in -1..2 {
                     let this_offset = centre_map_offset + position_map - vec3(map_offset.x * x as f32, map_offset.y * y as f32, 0.0);
@@ -318,16 +317,17 @@ impl MapDisplay {
                     let model: Matrix4<f32> = Matrix4::from_translation(scaled_player_position);
                     gl_matrix4(gl, self.shader, model, "model");
                     gl_vec2(gl, self.shader, vec2(0.670,0.570), "screen");
-                    gl.DrawArrays(gl::TRIANGLES, 0, self.vertices_count as i32);
+                    gl.DrawArrays(gl::TRIANGLES, 0, self.vertices_count as i32 /5);
                 }
             }
+
 
             gl_vec2(gl, self.shader, vec2(0.670,0.570), "screen");
             gl_vec3(gl, self.shader, red, "colour");
             gl.BindVertexArray(self.map_vao);
             gl_matrix4(gl, self.shader, player_model, "model");
             gl_matrix4(gl, self.shader, projection, "projection");
-            gl.DrawArrays(gl::TRIANGLES, 0, self.map_vertices_count as i32);
+            gl.DrawArrays(gl::TRIANGLES, 0, self.map_vertices_count as i32 /5);
         }
     }
 }

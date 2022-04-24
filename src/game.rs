@@ -31,11 +31,12 @@ use crate::handle_javascript::write_stats_data;
 use crate::map_display::MapDisplay;
 use crate::openglshadow::OpenglShadow;
 use crate::passengers::{Passenger, PASSENGER_SCALE};
-use crate::sound::{ENGINE, load_sound, stop};
+use crate::sound::{load_sound, stop, play, SCOOP, EXPLOSION};
 use crate::special_effects::SpecialEffects;
 
 pub const GROUND: f32 = 0.01;
 const TARGET_FPS: u128 = 40;
+const MAX_PASSENGERS: usize = 10;
 
 pub struct Runtime {
     //opengl_shadow: OpenglShadowPointAllDirections,
@@ -61,14 +62,13 @@ pub struct Runtime {
     pub ground: Option<Ground>,
     score: i32,
     lives: i32,
-    level: i32,
     tick: i128,
     player_avitar: CarMainPlayer,
     camera_angle: f32,
     draw_text: Option<DrawText>,
     special_effects: SpecialEffects,
-    flash_message: String,
-    flash_message_countdown: i32,
+    flash_message: Vec<String>,
+    flash_message_countdown: i128,
     game_over: bool,
     bernard: i64,
     slow_loading_items: bool,
@@ -76,6 +76,7 @@ pub struct Runtime {
     loading_screen2: LoadingScreen,
     map_display: MapDisplay,
     sky_box: Skybox,
+    original_passenger_to_copy:Vec<ModelInstance>,
     passengers: Vec<Passenger>,
 }
 
@@ -210,13 +211,12 @@ impl Runtime {
             space: false,
             score: 0,
             lives: 5,
-            level: 1,
             tick: 0,
             player_avitar: player,
             camera_angle: 0.0,
             draw_text: None,
             special_effects,
-            flash_message: String::new(),
+            flash_message: vec![],
             flash_message_countdown: 0,
             game_over: false,
             rate_debug: "".to_string(),
@@ -226,6 +226,7 @@ impl Runtime {
             loading_screen2: LoadingScreen::new(&gl, "resources/loading2.png"),
             map_display: MapDisplay::new(&gl),
             sky_box: Skybox::new(&gl, "resources/sky.png"),
+            original_passenger_to_copy: vec![],
             passengers: vec![],
         };
         output_elapsed(start, "Time elapsed in game() is");
@@ -295,6 +296,8 @@ impl emscripten_main_loop::MainLoop for Runtime {
             if self.tick > 20 && self.ground.is_none() {
                 self.ground = Some(Ground::new(&self.gl));
                 self.slow_loading_items = false;
+                //let mut original_passenger_animation = self.create_passenger();
+                self.original_passenger_to_copy = self.create_passenger();
             }
             MainLoopEvent::Continue
         };
@@ -315,7 +318,6 @@ impl emscripten_main_loop::MainLoop for Runtime {
 }
 
 
-const MAX_PASSENGERS: usize = 15;
 
 impl Runtime {
     fn setup_text_if_not_loaded(&mut self) {
@@ -394,7 +396,6 @@ impl Runtime {
     fn game_playing_loop(&mut self, _debug_start: Instant, update_delta: f32) -> MainLoopEvent {
         let humans = self.passengers.iter().filter(|p| !p.zombie).count();
 
-
         self.add_some_passengers_if_required(humans);
         let projection: Matrix4<f32> =
             perspective(Deg(PERSPECTIVE_ANGLE), WIDTH as f32 / HEIGHT as f32, 0.01, 100.0);
@@ -404,7 +405,7 @@ impl Runtime {
         self.ground.as_mut().unwrap().set_player_position(self.player_avitar.movement_collision.position.x, self.player_avitar.movement_collision.position.z);
 
         if !self.game_over {
-            self.ground.as_mut().unwrap().update(&self.gl, self.player_avitar.movement_collision.position, self.level, self.camera_angle, update_delta);
+            self.ground.as_mut().unwrap().update(&self.gl, self.player_avitar.movement_collision.position, self.camera_angle, update_delta);
         }
 
 
@@ -423,7 +424,7 @@ impl Runtime {
         }
 
         self.ground.as_mut().unwrap().render(&self.gl, &view, &projection, self.player_avitar.movement_collision.position, self.camera_angle,
-                                             self.no_shadow_shader, &mut self.passengers,self.tick);
+                                             self.no_shadow_shader, &mut self.passengers, self.tick);
         self.player_avitar.render(&self.gl, &view, &projection, self.no_shadow_shader);
 
         self.special_effects.render(&self.gl, &view, &projection, self.no_shadow_shader);
@@ -447,21 +448,32 @@ impl Runtime {
                         _ => ""
                     };
 
-                    let status = format!("score={} lives={} compass={}", self.score, self.lives,compass );
-                    self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, HEIGHT as f32 - 30.0, vec3(1.0, 1.0, 0.0),1.0);
-                    let status = format!("humans={} off_road={} ", humans,self.player_avitar.off_road.round());
-                    self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, HEIGHT as f32 - 60.0, vec3(1.0, 1.0, 0.0),1.0);
+                    let status = format!("score={} lives={} camera={}", self.score, self.lives, compass);
+                    self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, HEIGHT as f32 - 30.0, vec3(1.0, 1.0, 0.0), 1.0);
+                    let status = format!("humans={} off_road={} ", humans, self.player_avitar.off_road.round());
+                    self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, HEIGHT as f32 - 60.0, vec3(1.0, 1.0, 0.0), 1.0);
 
                     let status = format!("road={} {}", under_landscape.filename,self.player_avitar.msg);
-                    self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, 60.0, vec3(1.0, 1.0, 0.0),1.0);
-                    //if self.flash_message_countdown > 0 { self.draw_text.as_ref().unwrap().draw_text(&self.gl, self.flash_message.as_str(), 2.0, HEIGHT as f32 - 64.0, vec3(1.0, 1.0, 0.0)); }
+                    self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, 60.0, vec3(1.0, 1.0, 0.0), 1.0);
+                    if self.flash_message_countdown > 0 {
+                        self.flash_message_countdown = self.flash_message_countdown -1;
+                        let mut screen_y = HEIGHT as f32 * 0.75;
+                        for msg in self.flash_message.iter() {
+                            self.draw_text.as_ref().unwrap().draw_text(
+                                &self.gl, msg, 10.0, screen_y, vec3(1.0, 1.0, 0.0),1.5);
+                            screen_y = screen_y - 60.0;
+                        }
+                        if self.flash_message_countdown <= 0 {
+                            self.flash_message.clear();
+                        }
+                    }
                 }
             }
         } else {
-            let where_x =(self.tick /100000 ) as f32 % (WIDTH as f32* 1.25) - 100.0;
-            self.draw_text.as_ref().unwrap().draw_text(&self.gl, "Game over...", where_x , HEIGHT as f32 * 0.75, vec3(1.0, 1.0, 0.0),2.0);
+            let where_x = (self.tick / 100000) as f32 % (WIDTH as f32 * 1.25) - 100.0;
+            self.draw_text.as_ref().unwrap().draw_text(&self.gl, "Game over...", where_x, HEIGHT as f32 * 0.75, vec3(1.0, 1.0, 0.0), 2.0);
             let status = format!("score={}", self.score, );
-            self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, where_x, HEIGHT as f32 * 0.5, vec3(1.0, 1.0, 0.0),2.0);
+            self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, where_x, HEIGHT as f32 * 0.5, vec3(1.0, 1.0, 0.0), 2.0);
         }
 
 
@@ -472,19 +484,28 @@ impl Runtime {
         if !self.game_over {
             for index in (0..self.passengers.len()).rev() {
                 let passenger = self.passengers.get_mut(index).unwrap();
-                let (remove, add_score, zombie_explode) = passenger.update(update_delta, &self.ground.as_ref().unwrap(), &self.camera, self.tick, &mut self.special_effects, self.player_avitar.movement_collision.position);
-                if remove {
-                    self.passengers.remove(index);
-                }
-                if add_score {
-                    self.score = self.score + 1;
-                }
-                if zombie_explode {
-                    self.lives = self.lives - 1;
-                }
-                if self.player_avitar.off_road_too_much() {
-                    self.lives = self.lives - 1;
-                }
+                    let (remove, add_score, zombie_explode) = passenger.update(update_delta, &self.ground.as_ref().unwrap(), &self.camera, self.tick, &mut self.special_effects, self.player_avitar.movement_collision.position);
+                    if remove {
+                        self.passengers.remove(index);
+                    }
+                    if add_score {
+                        play(SCOOP);
+                        self.score = self.score + 1;
+                        self.flash_message.push(String::from("passenger picked up"));
+                        self.flash_message_countdown = 60;
+                    }
+                    if zombie_explode {
+                        self.lives = self.lives - 1;
+                        self.flash_message.push(String::from("zombie exploded near you"));
+                        self.flash_message_countdown = 60;
+                        self.player_avitar.reset();
+                    }
+                    if self.player_avitar.off_road_too_much() {
+                        play(EXPLOSION);
+                        self.lives = self.lives - 1;
+                        self.flash_message.push(String::from("off road too long"));
+                        self.flash_message_countdown = 60;
+                    }
             }
             self.player_avitar.update(update_delta, &self.ground.as_ref().unwrap(), &self.camera, self.tick, &mut self.special_effects);
         }
@@ -512,7 +533,7 @@ impl Runtime {
             self.player_avitar.accelerate(accelerate_by, &self.ground.as_ref().unwrap());
         } else {
             if self.player_avitar.accelerator_pressed <= 0.0 {
-                stop(ENGINE);
+                //stop(ENGINE);
             }
             self.player_avitar.accelerate(slow_down, &self.ground.as_ref().unwrap());
         }
@@ -532,18 +553,18 @@ impl Runtime {
                     write_stats_data(CString::new(update).to_owned().unwrap().as_ptr());
         */
 
+        //output_elapsed(_debug_start, "time elapsed for gameloop");
         end_status
     }
 
-    fn add_some_passengers_if_required(&mut self,humans:usize) {
+    fn add_some_passengers_if_required(&mut self, humans: usize) {
         if self.ground.is_some() {
-            if (self.passengers.len() == 0 || humans <= 3 ) && self.passengers.len() <= MAX_PASSENGERS {
-                let original_instances = self.create_passenger();
+            if (self.passengers.len() == 0 || humans <= 3) && self.passengers.len() <= MAX_PASSENGERS {
+                //let original_instances = self.create_passenger();
 
                 let just_one = false;
                 if just_one {
-                    let instances = original_instances.clone();
-                    let mut passenger = Passenger::new(&self.gl, vec3(0.0, 0.20, -2.6), &instances);
+                    let mut passenger = Passenger::new(&self.gl, vec3(0.0, 0.20, -2.6), &self.original_passenger_to_copy);
                     passenger.set_random_time_to_zombie();
                     self.passengers.push(passenger);
                 }
@@ -563,7 +584,7 @@ impl Runtime {
                                         start_position = start_position.div(landscape_object.vertices.len() as f32);
                                         start_position = start_position + l.xyz;
                                         start_position.y = 0.2;
-                                        let mut passenger = Passenger::new(&self.gl, start_position, &original_instances.clone());
+                                        let mut passenger = Passenger::new(&self.gl, start_position, &self.original_passenger_to_copy.clone());
                                         passenger.set_random_time_to_zombie();
                                         self.passengers.push(passenger)
                                     }
@@ -572,19 +593,21 @@ impl Runtime {
                         }
                     }
                 }
-                println!("Added some passengers!!!");
+                //println!("Added some passengers!!!");
             }
         }
     }
 
     fn create_passenger(&self) -> Vec<ModelInstance> {
+        let model_zero = Model::new(&self.gl, "resources/models/man0.obj", "resources/models/body.png");
+        let model_zero_instance = ModelInstance::new(&self.gl, model_zero.clone(), PASSENGER_SCALE, Some("resources/models/zombie.png"));
         let mut instances = Vec::<ModelInstance>::new();
-        let men = vec![0, 1, 0, 2];
-        for i in men {
+        for i in 1..3 {
             let name = format!("resources/models/man{}.obj", i);
             println!("Load {}", name);
             let model = Model::new(&self.gl, name.as_str(), "resources/models/body.png");
             let model_instance = ModelInstance::new(&self.gl, model.clone(), PASSENGER_SCALE, Some("resources/models/zombie.png"));
+            instances.push(model_zero_instance.clone());
             instances.push(model_instance);
         }
         return instances;

@@ -96,7 +96,7 @@ impl Ground {
         if zz >= BY { zz = BY - 1 }
         (xx, zz)
     }
-    pub fn update(&mut self, _gl: &gl::Gl, player_position: Vector3<f32>, _level: i32, camera_angle: f32, _delta: f32) {
+    pub fn update(&mut self, _gl: &gl::Gl, player_position: Vector3<f32>,  camera_angle: f32, _delta: f32) {
         self.sort_out_what_to_display(player_position, camera_angle);
     }
 

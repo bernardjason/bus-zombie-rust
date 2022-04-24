@@ -11,18 +11,20 @@ use crate::gl_helper::model::Model;
 use crate::ground::{BY, Ground};
 //use std::ops::{AddAssign, Add, Mul};
 use crate::landscape::{LandscapeObject, SQUARE_COLUMNS, SQUARE_SIZE};
-use crate::sound::{ENGINE, EXPLOSION, play, stop};
+use crate::sound::{ EXPLOSION, play, stop, WARNING};
 //use crate::gl_helper::texture::create_texture;
 //use std::ops::AddAssign;
 use crate::special_effects::SpecialEffects;
 use crate::scenery::Scenery;
+use crate::gl_helper::texture::create_texture_png;
 
 pub struct CarMainPlayer {
-    pub(crate) model_instance: ModelInstance,
+    pub(crate) model_instances: Vec<ModelInstance>,
     pub(crate) movement_collision: MovementAndCollision,
     matrix: Matrix4<f32>,
     rotation_y_axis: Matrix4<f32>,
     steering: f32,
+    angle:f32,
     pub rotation_y: f32,
     rotation_x_axis: Matrix4<f32>,
     pub rotation_x: f32,
@@ -33,10 +35,9 @@ pub struct CarMainPlayer {
     gravity: f32,
     forward_reverse: f32,
     dir: Vector3<f32>,
-    crashed: bool,
-    crashed_ticker: i32,
     pub off_road:f32,
     pub msg: String,
+    tick:f32,
 }
 
 const MODEL_HEIGHT: f32 = 0.007;
@@ -57,18 +58,23 @@ impl CarMainPlayer {
     pub fn new(gl: &gl::Gl) -> CarMainPlayer {
         let start = get_start_time();
 
+        let mut model_instances:Vec<ModelInstance> = vec![];
         let model = Model::new(gl, "resources/models/bus.obj", "resources/models/bus.png");
-        let model_instance = ModelInstance::new(gl, model.clone(), SCALE, None);
+        model_instances.push( ModelInstance::new(gl, model.clone(), SCALE, Some("resources/models/bus1.png" ) ) );
+        model_instances.push( ModelInstance::new(gl, model.clone(), SCALE, Some("resources/models/bus2.png" ) ) );
+        model_instances.push( ModelInstance::new(gl, model.clone(), SCALE, Some("resources/models/bus3.png" ) ) );
+        model_instances.push( ModelInstance::new(gl, model.clone(), SCALE, Some("resources/models/bus4.png" ) ) );
 
         output_elapsed(start,"time elapsed for car_main_player new()");
         CarMainPlayer {
-            model_instance,
+            model_instances,
             movement_collision: MovementAndCollision::new(MODEL_HEIGHT * 1.25, start_position()),
             matrix: Matrix4::from_translation(start_position()),
             rotation_y_axis: Matrix4::from_angle_y(Deg(0.0)),
             rotation_y: 0.0,
             rotation_x_axis: Matrix4::from_angle_x(Deg(0.0)),
             steering: 0.0,
+            angle:0.0,
             rotation_x: 0.0,
             force: Matrix4::from_translation(vec3(0.0, 0.0, 0.0)),
             ahead_force: Matrix4::from_translation(vec3(0.0, 0.0, 0.0)),
@@ -77,20 +83,15 @@ impl CarMainPlayer {
             forward_reverse: -1.0,
             dir: vec3(0.0, 0.00, 0.0),
             gravity: GRAVITY_ADD,
-            crashed: false,
-            crashed_ticker: 0,
             off_road:0.0,
             msg: "".to_string(),
+            tick:0.0,
         }
     }
 
     pub fn reset(&mut self) {
-        stop(ENGINE);
-        self.crashed = false;
-        self.crashed_ticker = 0;
-        self.model_instance.scale = SCALE;
-        //self.movement_collision.position = start_position();
-        self.movement_collision.position.y = start_position().y;
+        //stop(ENGINE);
+        self.movement_collision.position = start_position();
         self.applied_rotation = Matrix4::from_translation(vec3(0.0, 0.0, 0.0));
         self.force = Matrix4::from_translation(vec3(0.0, 0.0, 0.0));
         self.gravity = GRAVITY_ADD;
@@ -99,8 +100,9 @@ impl CarMainPlayer {
         self.off_road = 0.0;
     }
     pub fn off_road_too_much(&mut self) -> bool {
-        if self.off_road > 30.0 {
+        if self.off_road > 40.0 {
             self.off_road = 0.0;
+            self.reset();
             return true
         }
         false
@@ -130,7 +132,22 @@ impl CarMainPlayer {
     }
     pub fn update(&mut self, delta: f32, ground: &Ground, _camera: &Flying_Camera, tick: i128, special_effects: &mut SpecialEffects) {
         if self.accelerator_pressed > 0.01 {
+            if self.angle > 0.0 && self.angle < 180.0 {
+                self.tick = self.tick + self.accelerator_pressed ;
+            } else {
+                self.tick = self.tick - self.accelerator_pressed ;
+            }
+            if self.tick < 0.0 {
+                self.tick = 100000.0;
+            }
             self.rotation_y_axis = Matrix4::from_angle_y(Deg(-self.steering));
+            self.angle = self.angle +self.steering;
+            if self.angle >= 360.0 {
+                self.angle = self.angle - 360.0;
+            }
+            if self.angle < 0.0 {
+                self.angle = self.angle + 360.0;
+            }
         } else {
             self.rotation_y_axis = Matrix4::from_angle_y(Deg(0.0));
         }
@@ -198,18 +215,22 @@ impl CarMainPlayer {
         if self.off_road > 0.0 {
             self.off_road = self.off_road - delta * 5.0;
         }
+        if over.is_none() {
+            play(WARNING);
+        }
         self.msg = String::new();
         self.off_road = self.off_road + over.map_or(1.0 , |l:&LandscapeObject| {
             if l.description.contains("road") {
                 self.msg = l.description.clone();
                 0.0
             } else {
+                play(WARNING);
                 1.0
             }
         });
         let (hit_scenery,xyz) = ground.scenery_at(self.movement_collision.position.x, self.movement_collision.position.z);
         hit_scenery.map(|l:&Scenery| {
-            let distance = l.movement_collision.position.distance(self.movement_collision.position);
+            //let distance = l.movement_collision.position.distance(self.movement_collision.position);
             let distance = (xyz + l.position).distance(self.movement_collision.position);
             if distance < l.movement_collision.radius {
                 self.msg = format!("HIT!!!!!!! Over  {:?} {} {}",l.scenery_type, l.position.x,l.position.z);
@@ -241,7 +262,6 @@ impl CarMainPlayer {
 
 
         if self.accelerator_pressed > 0.0 && tick % 3 == 0 {
-            let mut rng = rand::thread_rng();
             let mut dir = vec3(0.0, MODEL_HEIGHT, 0.0);
             dir = self.applied_rotation.transform_vector(dir);
             /*
@@ -253,14 +273,6 @@ impl CarMainPlayer {
         }
     }
 
-    fn crashed(&mut self, special_effects: &mut SpecialEffects) {
-        self.accelerator_pressed = 0.0;
-        stop(ENGINE);
-        self.crashed = true;
-        self.crashed_ticker = 160;
-        special_effects.explosion(self.movement_collision.position);
-        play(EXPLOSION);
-    }
     fn flip_reset_the_matrix(&mut self, x: f32, z: f32) {
         let width = (SQUARE_COLUMNS) as f32 * SQUARE_SIZE * BY as f32;
 
@@ -286,15 +298,13 @@ impl CarMainPlayer {
         point2vec(point)
     }
     pub(crate) fn render(&mut self, gl: &gl::Gl, view: &Matrix4<f32>, projection: &Matrix4<f32>, our_shader: u32) {
-        self.model_instance.matrix = self.matrix;
-        if !self.crashed {
-            //if self.thrusting {
-            //self.model_instance.render(gl, &view, &projection,our_shader,true);
-            //} else {
-            self.model_instance.render(gl, &view, &projection, our_shader, false);
-            //}
+        let alt = if self.tick% 2.0 < 1.25 {
+            true
         } else {
-            self.model_instance.render(gl, &view, &projection, our_shader, false);
-        }
+            false
+        };
+        let instance = (self.tick % self.model_instances.len() as f32) as usize ;
+        self.model_instances[instance].matrix = self.matrix;
+        self.model_instances[instance].render(gl, &view, &projection, our_shader, alt);
     }
 }

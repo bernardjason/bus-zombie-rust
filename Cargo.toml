@@ -1,5 +1,5 @@
 [package]
-name = "car-rust"
+name = "bus-zombie-rust"
 version = "0.1.0"
 authors = ["bernardcjason@gmail.com <bernardcjason@gmail.com>"]
 edition = "2018"

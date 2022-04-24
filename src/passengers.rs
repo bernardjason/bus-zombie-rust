@@ -38,8 +38,6 @@ pub struct Passenger {
     pub rotation_x: f32,
     force: Matrix4<f32>,
     ahead_force: Matrix4<f32>,
-    //ahead_force_left: Matrix4<f32>,
-    //ahead_force_right: Matrix4<f32>,
     moves_since_last_change: i32,
     nsew: Vec<bool>,
     old_nsew: Vec<bool>,
@@ -53,7 +51,6 @@ pub struct Passenger {
     dir: Vector3<f32>,
     speed: f32,
     animate_speed: f32,
-    pub msg: String,
 }
 
 const MODEL_HEIGHT: f32 = 0.10;
@@ -109,7 +106,6 @@ impl Passenger {
             gravity: GRAVITY_ADD,
             speed,
             animate_speed: speed * 84.0,
-            msg: "".to_string(),
         };
         output_elapsed(start, "time elapsed for passenger new()");
         p
@@ -118,6 +114,7 @@ impl Passenger {
     pub fn set_random_time_to_zombie(&mut self) {
         let mut rng = rand::thread_rng();
         self.zombie_countdown = rng.gen_range(40.0,120.0);
+        //self.zombie_countdown = rng.gen_range(4.0,12.0);
     }
 
 
@@ -156,10 +153,11 @@ impl Passenger {
         if !self.zombie_exploding && distance < ZOMBIE_DISTANCE_GOT_TO_BUS && self.zombie {
             special_effects.explosion(self.movement_collision.position);
             //finished = true;
-            zombie_explode = self.set_to_explode();
+            zombie_explode = true;
+            self.set_to_explode();
         }
         if self.zombie && self.zombie_countdown < -20.0 && ! self.zombie_exploding {
-            zombie_explode = self.set_to_explode();
+            self.set_to_explode();
         }
         if self.zombie_exploding && self.zombie_countdown <= 0.0 {
             finished = true;
@@ -191,7 +189,7 @@ impl Passenger {
                 self.matrix = original_matrix * self.rotation_y_axis * self.rotation_x_axis;
                 self.update_position();
                 self.gravity = 0.0;
-                println!("ROLLBACK height {} ", ground_height);
+                //println!("ROLLBACK height {} ", ground_height);
             }
         }
 
@@ -264,20 +262,20 @@ impl Passenger {
 
     fn wrap_position_if_needed(&mut self, half_width: f32) {
         if self.movement_collision.position.x < -half_width {
-            println!("b4 x< 0 Reset x={},z={} {}", self.movement_collision.position.x, self.movement_collision.position.z, self.force.w.y);
+            //println!("b4 x< 0 Reset x={},z={} {}", self.movement_collision.position.x, self.movement_collision.position.z, self.force.w.y);
             self.flip_reset_the_matrix(1.0, 0.0);
-            println!("x< 0 Reset x={},z={}", self.movement_collision.position.x, self.movement_collision.position.z);
+            //println!("x< 0 Reset x={},z={}", self.movement_collision.position.x, self.movement_collision.position.z);
         } else if self.movement_collision.position.x > half_width {
-            println!("b4 x> Reset x={},z={}  {}", self.movement_collision.position.x, self.movement_collision.position.z, self.force.w.y);
+            //println!("b4 x> Reset x={},z={}  {}", self.movement_collision.position.x, self.movement_collision.position.z, self.force.w.y);
             self.flip_reset_the_matrix(-1.0, 0.0);
-            println!("x> Reset x={},z={}", self.movement_collision.position.x, self.movement_collision.position.z);
+            //println!("x> Reset x={},z={}", self.movement_collision.position.x, self.movement_collision.position.z);
         }
         if self.movement_collision.position.z <= -half_width {
-            println!("b4 z<0 Reset x={},z={}  {}", self.movement_collision.position.x, self.movement_collision.position.z, self.force.w.y);
+            //println!("b4 z<0 Reset x={},z={}  {}", self.movement_collision.position.x, self.movement_collision.position.z, self.force.w.y);
             self.flip_reset_the_matrix(0.0, 1.0);
-            println!("z<0 Reset x={},z={}", self.movement_collision.position.x, self.movement_collision.position.z);
+            //println!("z<0 Reset x={},z={}", self.movement_collision.position.x, self.movement_collision.position.z);
         } else if self.movement_collision.position.z >= half_width {
-            println!("b4 z> Reset x={},z={}  {}", self.movement_collision.position.x, self.movement_collision.position.z, self.force.w.y);
+            //println!("b4 z> Reset x={},z={}  {}", self.movement_collision.position.x, self.movement_collision.position.z, self.force.w.y);
             self.flip_reset_the_matrix(0.0, -1.0);
         }
     }
@@ -360,36 +358,36 @@ impl Passenger {
         if okay_forward && !current_nsew.eq(&self.nsew) && self.moves_since_last_change > 60 {
             self.nsew_change_clicks = 0;
             self.old_nsew = self.nsew.clone();
-            print!("Something changed  old ");
-            Passenger::print_nsew(&self.nsew);
-            print!(" now=  ");
-            Passenger::print_nsew(&current_nsew);
-            println!(" ");
+            //print!("Something changed  old ");
+            //Passenger::print_nsew(&self.nsew);
+            //print!(" now=  ");
+            //Passenger::print_nsew(&current_nsew);
+            //println!(" ");
         }
 
         if self.nsew_change_clicks == 10 {
             let save = self.target_angle;
             if self.old_nsew[2] != self.nsew[2] && self.target_angle != 270.0 && self.movement_collision.position.x < chase_target.x && east {
-                print!("E ");
+                //print!("E ");
                 self.target_angle = 90.0;
             }
             if self.old_nsew[3] != self.nsew[2] && self.target_angle != 90.0 && self.movement_collision.position.x > chase_target.x && west {
-                print!("W ");
+                //print!("W ");
                 self.target_angle = 270.0;
             }
             if self.old_nsew[1] != self.nsew[1] && self.target_angle != 0.0 && self.movement_collision.position.z < chase_target.z && south {
-                print!("S ");
+                //print!("S ");
                 self.target_angle = 180.0;
             }
             if self.old_nsew[0] != self.nsew[0] && self.target_angle != 180.0 && self.movement_collision.position.z > chase_target.z && north {
-                print!("N ");
+                //print!("N ");
                 self.target_angle = 0.0;
             }
 
             if self.target_angle != save {
                 self.previous_target_angle = save;
             }
-            println!("{}", format!("see2 you target={} previous={} north okay={} south okay={} east okay={} west okay={}", self.target_angle, self.previous_target_angle, north, south, east, west));
+            //println!("{}", format!("see2 you target={} previous={} north okay={} south okay={} east okay={} west okay={}", self.target_angle, self.previous_target_angle, north, south, east, west));
         }
 
 
@@ -433,7 +431,7 @@ impl Passenger {
                 }
             }
             self.previous_target_angle = save;
-            println!("{}", format!("target={} previous={} north okay={} south okay={} east okay={} west okay={}", self.target_angle, self.previous_target_angle, north, south, east, west));
+            //println!("{}", format!("target={} previous={} north okay={} south okay={} east okay={} west okay={}", self.target_angle, self.previous_target_angle, north, south, east, west));
         }
         //tickprintln!(format!("debug target={} previous={} north okay={} south okay={} east okay={} west okay={}",self.target_angle,self.previous_target_angle,north,south,east,west));
 
@@ -441,7 +439,6 @@ impl Passenger {
     }
 
     fn stuck_random_move(&mut self) {
-        println!("BAD 1");
         let mut rng = rand::thread_rng();
         self.target_angle = (rng.gen_range(0, 3) * 90) as f32;
     }
@@ -497,7 +494,7 @@ impl Passenger {
     }
 
     fn north_south(&mut self, chase_target: Vector3<f32>, ground: &Ground) {
-        print!(" north south {} {}", self.movement_collision.position.z, chase_target.z);
+        //print!(" north south {} {}", self.movement_collision.position.z, chase_target.z);
         if self.movement_collision.position.z < chase_target.z {
             if self.previous_target_angle != 180.0 && self.change180(ground) {
                 self.target_angle = 180.0

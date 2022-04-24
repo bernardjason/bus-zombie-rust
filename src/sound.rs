@@ -65,7 +65,7 @@ static mut PLAYING_MAP: Option<HashMap<usize, Playing>> = None;
 static mut SOUNDS_MAP: Option<HashMap<usize, AudioDevice<Sound>>> = None;
 
 pub static EXPLOSION: usize = 1;
-pub static ENGINE: usize = 2;
+pub static WARNING: usize = 2;
 pub static SCOOP: usize = 3;
 
 #[cfg(feature = "soundoff")]
@@ -86,8 +86,8 @@ pub fn load_sound(sdl_context: &Sdl) {
         SOUNDS_MAP = Some(HashMap::new());
         VOLUME_MAP = Some(HashMap::new());
         SOUNDS_MAP.as_mut().unwrap().insert(EXPLOSION, load_in_file(sdl_context, "resources/sound/hit.wav", EXPLOSION, 14500, false));
-        SOUNDS_MAP.as_mut().unwrap().insert(ENGINE, load_in_file(sdl_context, "resources/sound/thrust.wav", ENGINE, 14500,false));
-        SOUNDS_MAP.as_mut().unwrap().insert(SCOOP, load_in_file(sdl_context, "resources/sound/scoop.wav", SCOOP, 4500,false));
+        SOUNDS_MAP.as_mut().unwrap().insert(WARNING, load_in_file(sdl_context, "resources/sound/warning.wav", WARNING, 0,false));
+        SOUNDS_MAP.as_mut().unwrap().insert(SCOOP, load_in_file(sdl_context, "resources/sound/scoop.wav", SCOOP, 50,false));
     }
 }
 
