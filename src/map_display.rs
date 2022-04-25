@@ -1,9 +1,6 @@
 extern crate cgmath;
 
-use std::{fs, io, mem};
-use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::ops::{Index, Mul};
+use std::{mem};
 use std::os::raw::c_void;
 use std::ptr;
 
@@ -14,9 +11,9 @@ use crate::gl_helper::{gl_matrix4, gl_vec3, gl_vec2};
 use crate::gl_helper::shader::create_shader;
 use crate::gl_helper::texture::{create_texture_jpg, create_texture_png};
 use crate::ground::BY;
-use crate::landscape::{IMAGE_SCALE_FACTOR, SQUARE_COLUMNS, SQUARE_ROWS, SQUARE_SIZE};
+use crate::landscape::{IMAGE_SCALE_FACTOR, SQUARE_COLUMNS, SQUARE_ROWS, };
 
-use self::cgmath::{Deg, frustum, Matrix4, ortho, perspective, vec3, Vector3, vec2};
+use self::cgmath::{Matrix4, ortho, vec3, Vector3, vec2};
 
 //let position_map = vec3(0.750, 0.650, 0.0);
 
@@ -82,25 +79,25 @@ pub struct MapDisplay {
 const SCALE: f32 = 0.125;
 
 impl MapDisplay {
-    const red_left:f32 = 0.99;
-    const red_top:f32 = 0.01;
-    const red_right:f32 = 1.00;
+    //const RED_LEFT:f32 = 0.99;
+    //const RED_TOP:f32 = 0.01;
+    //const RED_RIGHT:f32 = 1.00;
 
-    const white_left:f32 = 0.98;
-    const white_top:f32 = 0.01;
-    const white_right:f32 = 0.985;
+    const WHITE_LEFT:f32 = 0.98;
+    const WHITE_TOP:f32 = 0.01;
+    const WHITE_RIGHT:f32 = 0.985;
 
-    const green_left:f32 = 0.96;
-    const green_top:f32 = 0.01;
-    const green_right:f32 = 0.965;
+    //const GREEN_LEFT:f32 = 0.96;
+    //const GREEN_TOP:f32 = 0.01;
+    //const GREEN_RIGHT:f32 = 0.965;
 
-    const black_left:f32 = 0.95;
-    const black_top:f32 = 0.01;
-    const black_right:f32 = 0.955;
+    //const BLACK_LEFT:f32 = 0.95;
+    //const BLACK_TOP:f32 = 0.01;
+    //const BLACK_RIGHT:f32 = 0.955;
 
-    const grey_left:f32 = 0.94;
-    const grey_top:f32 = 0.01;
-    const grey_right:f32 = 0.945;
+    const GREY_LEFT:f32 = 0.94;
+    const GREY_TOP:f32 = 0.01;
+    const GREY_RIGHT:f32 = 0.945;
 
     pub fn new(gl: &gl::Gl) -> MapDisplay {
         let start = get_start_time();
@@ -109,13 +106,13 @@ impl MapDisplay {
 
             let background_z = -1.0;
             let mut vertices: Vec<f32> = vec![
-                0.0, 0.0 , background_z,       MapDisplay::grey_left,0.0,
-                99.0, 0.0, background_z,       MapDisplay::grey_right,0.0,
-                99.0, 99.0, background_z,       MapDisplay::grey_right,MapDisplay::grey_top,
+                0.0, 0.0, background_z, MapDisplay::GREY_LEFT, 0.0,
+                99.0, 0.0, background_z, MapDisplay::GREY_RIGHT, 0.0,
+                99.0, 99.0, background_z, MapDisplay::GREY_RIGHT, MapDisplay::GREY_TOP,
 
-                0.0, 0.0,    background_z,    MapDisplay::grey_left,0.0,
-                0.0, 99.0,    background_z,    MapDisplay::grey_left,MapDisplay::grey_top,
-                99.0, 99.0,    background_z,    MapDisplay::grey_right,MapDisplay::grey_top,
+                0.0, 0.0, background_z, MapDisplay::GREY_LEFT, 0.0,
+                0.0, 99.0, background_z, MapDisplay::GREY_LEFT, MapDisplay::GREY_TOP,
+                99.0, 99.0, background_z, MapDisplay::GREY_RIGHT, MapDisplay::GREY_TOP,
 
             ];
 
@@ -156,7 +153,7 @@ impl MapDisplay {
         }
     }
 
-    unsafe fn bind_vertices(gl: &gl::Gl, mut vertices: &mut Vec<f32>) -> u32 {
+    unsafe fn bind_vertices(gl: &gl::Gl, vertices: &mut Vec<f32>) -> u32 {
         let (mut vbo, mut vao) = (0, 0);
         if vertices.len() > 0 {
             gl.GenVertexArrays(1, &mut vao);
@@ -185,7 +182,7 @@ impl MapDisplay {
                 let filename = format!("resources/road_{}_{}.txt", xx, zz);
                 println!("MAP FILE -----------------------    {} ", filename);
                 let mut rows: Vec<StringRecord> = vec![];
-                let mut reader = csv::ReaderBuilder::new().has_headers(false).flexible(true)
+                let reader = csv::ReaderBuilder::new().has_headers(false).flexible(true)
                     .comment(Some(b'#')).trim(Trim::All).from_path(&filename).expect(&filename);
                 for record in reader.into_records() {
                     if record.is_ok() {
@@ -227,28 +224,28 @@ impl MapDisplay {
         vertices.push(x + xx as f32 * SCALE);
         vertices.push(z + zz as f32 * SCALE);
         vertices.push(0.0);
-        vertices.push(MapDisplay::white_left); vertices.push(0.0);
+        vertices.push(MapDisplay::WHITE_LEFT); vertices.push(0.0);
         vertices.push(x + xx as f32 * SCALE + size);
         vertices.push(z + zz as f32 * SCALE);
         vertices.push(0.0);
-        vertices.push(MapDisplay::white_right); vertices.push(0.00);
+        vertices.push(MapDisplay::WHITE_RIGHT); vertices.push(0.00);
         vertices.push(x + xx as f32 * SCALE + size);
         vertices.push(z + zz as f32 * SCALE + size);
         vertices.push(0.0);
-        vertices.push(MapDisplay::white_right); vertices.push(MapDisplay::white_top);
+        vertices.push(MapDisplay::WHITE_RIGHT); vertices.push(MapDisplay::WHITE_TOP);
 
         vertices.push(x + xx as f32 * SCALE);
         vertices.push(z + zz as f32 * SCALE);
         vertices.push(0.0);
-        vertices.push(MapDisplay::white_left); vertices.push(0.0);
+        vertices.push(MapDisplay::WHITE_LEFT); vertices.push(0.0);
         vertices.push(x + xx as f32 * SCALE);
         vertices.push(z + zz as f32 * SCALE + size);
         vertices.push(0.0);
-        vertices.push(MapDisplay::white_left); vertices.push(MapDisplay::white_top);
+        vertices.push(MapDisplay::WHITE_LEFT); vertices.push(MapDisplay::WHITE_TOP);
         vertices.push(x + xx as f32 * SCALE + size);
         vertices.push(z + zz as f32 * SCALE + size);
         vertices.push(0.0);
-        vertices.push(MapDisplay::white_right); vertices.push(MapDisplay::white_top);
+        vertices.push(MapDisplay::WHITE_RIGHT); vertices.push(MapDisplay::WHITE_TOP);
     }
     fn push_record(vertices: &mut Vec<f32>, record: &StringRecord, x: f32, y: f32) {
         //println!("RECORD {} {} {}", &record[0], &record[1], &record[2], );

@@ -1,25 +1,17 @@
-use std::ops::{Add, Mul, MulAssign, Sub};
-use std::time::Instant;
 
-use cgmath::{Angle, Array, Deg, EuclideanSpace, InnerSpace, Matrix4, MetricSpace, Point3, Rad, Transform, vec3, Vector3, Zero};
+use cgmath::{Angle, Deg, EuclideanSpace, InnerSpace, Matrix4, MetricSpace, Point3, Rad, Transform, vec3, Vector3, Zero};
 use rand::Rng;
-use rand::rngs::ThreadRng;
 
-use crate::{get_start_time, gl, landscape, output_elapsed, point2vec};
+use crate::{get_start_time, gl, output_elapsed, point2vec};
 use crate::flying_camera::Flying_Camera;
 use crate::game::MovementAndCollision;
 use crate::gl_helper::instance_model::ModelInstance;
-use crate::gl_helper::model::Model;
 use crate::ground::{BY, Ground};
-//use std::ops::{AddAssign, Add, Mul};
-use crate::landscape::{LandscapeObject, SQUARE_COLUMNS, SQUARE_SIZE};
-use crate::scenery::Scenery;
-//use crate::gl_helper::texture::create_texture;
-//use std::ops::AddAssign;
+use crate::landscape::{ SQUARE_COLUMNS, SQUARE_SIZE};
 use crate::special_effects::SpecialEffects;
-use crate::tickdebug;
-use crate::tickprintcounter;
-use crate::tickprintln;
+//use crate::TICKDEBUG;
+//use crate::TICKPRINTCOUNTER;
+//use crate::tickprintln;
 
 pub struct Passenger {
     pub(crate) model_instance: Vec<ModelInstance>,
@@ -36,7 +28,6 @@ pub struct Passenger {
     pub rotation_y: f32,
     rotation_x_axis: Matrix4<f32>,
     pub rotation_x: f32,
-    force: Matrix4<f32>,
     ahead_force: Matrix4<f32>,
     moves_since_last_change: i32,
     nsew: Vec<bool>,
@@ -45,7 +36,6 @@ pub struct Passenger {
     target_angle: f32,
     previous_target_angle: f32,
     applied_rotation: Matrix4<f32>,
-    current_under_description: String,
     gravity: f32,
     forward_reverse: f32,
     dir: Vector3<f32>,
@@ -54,7 +44,6 @@ pub struct Passenger {
 }
 
 const MODEL_HEIGHT: f32 = 0.10;
-const THRUST_AHEAD: f32 = 3.0;
 const GRAVITY_ADD: f32 = 0.05;
 const GRAVITY_MAX: f32 = 0.05;
 pub const PASSENGER_SCALE: f32 = 0.004;
@@ -68,7 +57,7 @@ const HUMAN_SEE_BUS: f32 = 4.0;
 const ZOMBIE_SEE_BUS: f32 = 8.0;
 
 impl Passenger {
-    pub fn new(gl: &gl::Gl, start_position: Vector3<f32>, instances: &Vec<ModelInstance>) -> Passenger {
+    pub fn new(_gl: &gl::Gl, start_position: Vector3<f32>, instances: &Vec<ModelInstance>) -> Passenger {
         let start = get_start_time();
 
         let mut rng = rand::thread_rng();
@@ -88,9 +77,6 @@ impl Passenger {
             rotation_x_axis: Matrix4::from_angle_x(Deg(0.0)),
             angle_of_rotation: 0.0,
             rotation_x: 0.0,
-            force: Matrix4::from_translation(vec3(0.0, 0.0, 0.0)),
-            //ahead_force_left: Matrix4::from_translation(vec3(1.00, 0.0, -0.0)),
-            //ahead_force_right: Matrix4::from_translation(vec3(-1.00, 0.0, -0.0)),
             ahead_force: Matrix4::from_translation(vec3(0.0, 0.0, 0.1)),
             moves_since_last_change: 0,
             target_angle: 180.0,
@@ -99,7 +85,6 @@ impl Passenger {
             old_nsew: vec![false, false, false, false],
             nsew_change_clicks: 100,
             rotation_angle: 180.0,
-            current_under_description: String::new(),
             applied_rotation: Matrix4::from_translation(vec3(0.0, 0.0, 0.0)),
             forward_reverse: 1.0,
             dir: vec3(0.0, 0.00, 0.0),
@@ -133,7 +118,7 @@ impl Passenger {
         }
 
         if !self.zombie_exploding {
-            self.do_movement_updates(tick, special_effects, &original_matrix);
+            self.do_movement_updates(tick, special_effects,);
         } else {
             self.matrix.w.y = self.matrix.w.y - delta * 1.25;
             self.update_position();
@@ -203,7 +188,7 @@ impl Passenger {
     }
 
     fn turn_around_update(&mut self, original_matrix: Matrix4<f32>) {
-        let mut diff_angle2 = (self.target_angle - self.rotation_angle);
+        let mut diff_angle2 = self.target_angle - self.rotation_angle;
         if diff_angle2 < 0.0 { diff_angle2 = diff_angle2 + 360.0; }
 
         if self.target_angle == self.rotation_angle {
@@ -280,7 +265,7 @@ impl Passenger {
         }
     }
 
-    fn do_movement_updates(&mut self, tick: i128, special_effects: &mut SpecialEffects, original_matrix: &Matrix4<f32>) {
+    fn do_movement_updates(&mut self, tick: i128, special_effects: &mut SpecialEffects, ) {
         self.rotation_y_axis = Matrix4::from_angle_y(Deg(-self.angle_of_rotation));
         let mut dir = vec3(0.0, 0.0, self.forward_reverse * self.speed);
         dir = self.applied_rotation.transform_vector(dir) * 0.1;
@@ -455,74 +440,7 @@ impl Passenger {
         return over.is_some();
     }
 
-    const CHANGE_OK: f32 = 0.75;
-    fn change90(&mut self, ground: &Ground) -> bool {
-        let at = self.movement_collision.position - self.dir * 20.0 + vec3(Passenger::CHANGE_OK, 0.0, 0.0);
-        let over = ground.object_at(at.x, at.z);
-        return over.is_some();
-    }
-    fn change270(&mut self, ground: &Ground) -> bool {
-        let at = self.movement_collision.position - self.dir * 20.0 + vec3(-Passenger::CHANGE_OK, 0.0, 0.0);
-        let over = ground.object_at(at.x, at.z);
-        return over.is_some();
-    }
-    fn change0(&mut self, ground: &Ground) -> bool {
-        let at = self.movement_collision.position - self.dir * 20.0 + vec3(0.0, 0.0, Passenger::CHANGE_OK);
-        let over = ground.object_at(at.x, at.z);
-        return over.is_some();
-    }
-    fn change180(&mut self, ground: &Ground) -> bool {
-        let at = self.movement_collision.position - self.dir * 20.0 + vec3(0.0, 0.0, -Passenger::CHANGE_OK);
-        let over = ground.object_at(at.x, at.z);
-        return over.is_some();
-    }
 
-    fn east_west(&mut self, chase_target: Vector3<f32>, ground: &Ground) {
-        if self.movement_collision.position.x < chase_target.x {
-            if self.change90(ground) && self.previous_target_angle != 90.0 {
-                self.target_angle = 90.0
-            } else {
-                self.target_angle = 270.0
-            }
-        } else {
-            if self.change270(ground) && self.previous_target_angle != 270.0 {
-                self.target_angle = 270.0
-            } else {
-                self.target_angle = 90.0
-            }
-        }
-    }
-
-    fn north_south(&mut self, chase_target: Vector3<f32>, ground: &Ground) {
-        //print!(" north south {} {}", self.movement_collision.position.z, chase_target.z);
-        if self.movement_collision.position.z < chase_target.z {
-            if self.previous_target_angle != 180.0 && self.change180(ground) {
-                self.target_angle = 180.0
-            } else {
-                self.target_angle = 0.0
-            }
-        } else {
-            if self.previous_target_angle != 0.0 && self.change0(ground) {
-                self.target_angle = 0.0
-            } else {
-                self.target_angle = 180.0
-            }
-        }
-    }
-
-    fn change_direction_to_make_sure_over_road(&mut self, ground: &Ground, original_matrix: Matrix4<f32>, ahead_matrix: Matrix4<f32>) -> (Vector3<f32>, bool) {
-        let ahead = Passenger::position_ahead(ahead_matrix);
-        let over = ground.object_at(ahead.x, ahead.z);
-        let mut still_under = false;
-        if over.is_none() {
-            self.matrix = original_matrix * self.rotation_y_axis * self.rotation_x_axis;
-            self.update_position();
-        } else {
-            self.current_under_description = format!("{}", over.unwrap().description);
-            still_under = true;
-        }
-        (ahead, still_under)
-    }
 
     fn flip_reset_the_matrix(&mut self, x: f32, z: f32) {
         let width = (SQUARE_COLUMNS) as f32 * SQUARE_SIZE * BY as f32;

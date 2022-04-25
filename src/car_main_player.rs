@@ -1,9 +1,7 @@
-use std::time::Instant;
 
 use cgmath::{Angle, Deg, EuclideanSpace, InnerSpace, Matrix4, Point3, Transform, vec3, Vector3, Zero, MetricSpace};
-use rand::Rng;
 
-use crate::{gl, landscape, point2vec, get_start_time, output_elapsed};
+use crate::{gl, point2vec, get_start_time, output_elapsed};
 use crate::flying_camera::Flying_Camera;
 use crate::game::MovementAndCollision;
 use crate::gl_helper::instance_model::ModelInstance;
@@ -11,12 +9,10 @@ use crate::gl_helper::model::Model;
 use crate::ground::{BY, Ground};
 //use std::ops::{AddAssign, Add, Mul};
 use crate::landscape::{LandscapeObject, SQUARE_COLUMNS, SQUARE_SIZE};
-use crate::sound::{ EXPLOSION, play, stop, WARNING};
+use crate::sound::{ play, WARNING};
 //use crate::gl_helper::texture::create_texture;
 //use std::ops::AddAssign;
-use crate::special_effects::SpecialEffects;
 use crate::scenery::Scenery;
-use crate::gl_helper::texture::create_texture_png;
 
 pub struct CarMainPlayer {
     pub(crate) model_instances: Vec<ModelInstance>,
@@ -44,15 +40,11 @@ const MODEL_HEIGHT: f32 = 0.007;
 const GRAVITY_ADD: f32 = 0.05;
 const GRAVITY_MAX: f32 = 0.05;
 const SCALE: f32 = 0.013;
-const FUEL: f32 = 100.0;
 const GRAVITY: bool = true;
 
 fn start_position() -> Vector3<f32> {
     vec3(0.0, 2.0, 0.0)
 }
-
-const FUEL_DOWN_BY: f32 = 0.05;
-
 
 impl CarMainPlayer {
     pub fn new(gl: &gl::Gl) -> CarMainPlayer {
@@ -116,12 +108,12 @@ impl CarMainPlayer {
 
 
     pub fn steer_rotation_y_constant(&mut self, change_by: f32) {
-        let MAX=0.75;
+        let max =0.75;
         self.steering = self.steering + change_by;
-        if self.steering > MAX { self.steering = MAX }
-        if self.steering < -MAX { self.steering = -MAX }
+        if self.steering > max { self.steering = max }
+        if self.steering < -max { self.steering = -max }
     }
-    pub fn accelerate(&mut self, mut forward_by: f32, _ground: &Ground) {
+    pub fn accelerate(&mut self, forward_by: f32, _ground: &Ground) {
         self.accelerator_pressed = self.accelerator_pressed + forward_by;
         if self.accelerator_pressed < 0.0 {
             self.accelerator_pressed = 0.0;
@@ -130,7 +122,7 @@ impl CarMainPlayer {
             self.accelerator_pressed = 0.5;
         }
     }
-    pub fn update(&mut self, delta: f32, ground: &Ground, _camera: &Flying_Camera, tick: i128, special_effects: &mut SpecialEffects) {
+    pub fn update(&mut self, delta: f32, ground: &Ground, _camera: &Flying_Camera, tick: i128, ) {
         if self.accelerator_pressed > 0.01 {
             if self.angle > 0.0 && self.angle < 180.0 {
                 self.tick = self.tick + self.accelerator_pressed ;

@@ -1,15 +1,11 @@
 extern crate cgmath;
 
-use std::{fs, io, mem};
-use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::ops::Index;
+use std::{mem};
 use std::os::raw::c_void;
 use std::ptr;
 
 use cgmath::*;
 use csv::{StringRecord, Trim};
-use rand::Rng;
 
 use crate::gl;
 use crate::gl_helper::gl_matrix4;
@@ -59,10 +55,6 @@ pub struct Landscape {
     pub scenery_instances: Vec<Scenery>,
 }
 
-struct SideVertice {
-    height: i32,
-    vertices: Vec<f32>,
-}
 
 //const ROUND_Y: f32 = 10000.0;
 //pub const MAX_HEIGHT: f32 = 2.5;
@@ -100,7 +92,7 @@ impl Landscape {
 
             println!("-----------------------    {}       {}/{}", name, xyz.x, xyz.z);
             let mut rows: Vec<StringRecord> = vec![];
-            let mut reader = csv::ReaderBuilder::new().has_headers(false).flexible(true)
+            let reader = csv::ReaderBuilder::new().has_headers(false).flexible(true)
                 .comment(Some(b'#')).trim(Trim::All).from_path(&filename).expect(&filename);
             let mut landscape_object: LandscapeObject = LandscapeObject {
                 vertices: vec![],
@@ -205,14 +197,14 @@ impl Landscape {
     }
 
     // https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
-    fn polygon_contains_x_z(x: f32, z: f32, pXYZ: &Vec<Vector3<f32>>) -> bool {
-        let mut j = pXYZ.len() - 1;
+    fn polygon_contains_x_z(x: f32, z: f32, p_xyz: &Vec<Vector3<f32>>) -> bool {
+        let mut j = p_xyz.len() - 1;
         let mut does_contain = false;
 
-        for i in 0..pXYZ.len() {
-            if (pXYZ[i].z < z && pXYZ[j].z >= z || pXYZ[j].z < z && pXYZ[i].z >= z)
-                && (pXYZ[i].x <= x || pXYZ[j].x <= x) {
-                does_contain ^= (pXYZ[i].x + (z - pXYZ[i].z) * (pXYZ[j].x - pXYZ[i].x) / (pXYZ[j].z - pXYZ[i].z)) < x;
+        for i in 0..p_xyz.len() {
+            if (p_xyz[i].z < z && p_xyz[j].z >= z || p_xyz[j].z < z && p_xyz[i].z >= z)
+                && (p_xyz[i].x <= x || p_xyz[j].x <= x) {
+                does_contain ^= (p_xyz[i].x + (z - p_xyz[i].z) * (p_xyz[j].x - p_xyz[i].x) / (p_xyz[j].z - p_xyz[i].z)) < x;
             }
             j = i;
         }
@@ -265,7 +257,7 @@ impl Landscape {
         Landscape::push_record(&mut vertices, &rows[side2], Some(0.0));
 
         Landscape::push_record(&mut vertices, &rows[side2], Some(0.0));
-        Landscape::push_record(&mut vertices, &rows[side], Some((0.0)));
+        Landscape::push_record(&mut vertices, &rows[side], Some(0.0));
         Landscape::push_record(&mut vertices, &rows[side], None);
     }
 

@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use std::time::Instant;
 
 use cgmath::{Matrix4, vec2, vec3, Vector2, Vector3};
-use rand::Rng;
 
 use crate::{get_start_time, gl, output_elapsed};
 //use crate::gl_helper::model::Model;
@@ -24,7 +22,7 @@ impl Ground {
     pub fn new(gl: &gl::Gl) -> Ground {
         let start = get_start_time();
         let mut land: Vec<Vec<Landscape>> = vec![vec![]];
-        let mut height_map: Vec<Vec<AtCell>> = vec![vec![AtCell { height: 0.0 }; SQUARE_COLUMNS * BY]; SQUARE_COLUMNS * BY];
+        let height_map: Vec<Vec<AtCell>> = vec![vec![AtCell { height: 0.0 }; SQUARE_COLUMNS * BY]; SQUARE_COLUMNS * BY];
 
         let offset_x = BY as f32 * Ground::MUL * 0.5 - SQUARE_COLUMNS as f32 * SQUARE_SIZE * 0.5;
         let offset_z = BY as f32 * Ground::MUL * 0.5 - SQUARE_ROWS as f32 * SQUARE_SIZE * 0.5;

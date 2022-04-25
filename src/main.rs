@@ -16,8 +16,8 @@ mod gl_helper;
 mod flying_camera;
 mod handle_javascript;
 mod landscape;
-mod shadow_shaders;
-mod openglshadow;
+//mod shadow_shaders;
+//mod openglshadow;
 mod ground;
 mod special_effects;
 mod sound;
@@ -78,8 +78,8 @@ fn main() {
     emscripten_main_loop::run(runtime);
 }
 
-pub static mut tickprintcounter: i128 = 0;
-pub static mut tickdebug: bool = true;
+pub static mut TICKPRINTCOUNTER: i128 = 0;
+pub static mut TICKDEBUG: bool = true;
 
 #[macro_export]
     macro_rules! tickprintln {

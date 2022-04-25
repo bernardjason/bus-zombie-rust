@@ -1,8 +1,8 @@
-use std::ffi::CString;
+//use std::ffi::CString;
 use std::ops::{Add, Div};
 use std::time::Instant;
 
-use cgmath::{Basis3, Deg, Matrix4, MetricSpace, perspective, Point3, Rotation, Rotation3, vec3, Vector3, Zero};
+use cgmath::{Basis3, Deg, Matrix4, perspective, Point3, Rotation, Rotation3, vec3, Vector3, Zero};
 use emscripten_main_loop::MainLoopEvent;
 use rand::Rng;
 use sdl2::{Sdl, VideoSubsystem};
@@ -19,19 +19,18 @@ use crate::gl_helper::loading_screen::LoadingScreen;
 use crate::gl_helper::model::Model;
 use crate::gl_helper::shader::create_shader;
 use crate::gl_helper::skybox::{Skybox, SKYBOX_FS, SKYBOX_VS};
-use crate::gl_helper::texture::create_texture;
 use crate::ground::Ground;
 #[cfg(target_os = "emscripten")]
 use crate::handle_javascript::end_game;
 #[cfg(target_os = "emscripten")]
 use crate::handle_javascript::start_game;
-#[cfg(target_os = "emscripten")]
-use crate::handle_javascript::start_javascript_play_sound;
+//#[cfg(target_os = "emscripten")]
+//use crate::handle_javascript::start_javascript_play_sound;
 use crate::handle_javascript::write_stats_data;
 use crate::map_display::MapDisplay;
-use crate::openglshadow::OpenglShadow;
+//use crate::openglshadow::OpenglShadow;
 use crate::passengers::{Passenger, PASSENGER_SCALE};
-use crate::sound::{load_sound, stop, play, SCOOP, EXPLOSION};
+use crate::sound::{load_sound, play, SCOOP, EXPLOSION};
 use crate::special_effects::SpecialEffects;
 
 pub const GROUND: f32 = 0.01;
@@ -40,7 +39,7 @@ const MAX_PASSENGERS: usize = 10;
 
 pub struct Runtime {
     //opengl_shadow: OpenglShadowPointAllDirections,
-    opengl_shadow: OpenglShadow,
+    //opengl_shadow: OpenglShadow,
     no_shadow_shader: u32,
     loaded: bool,
     now: Instant,
@@ -122,9 +121,7 @@ impl MovementAndCollision {
             ..MovementAndCollision::default()
         }
     }
-    pub fn hit_other(&self, other: &MovementAndCollision) -> bool {
-        self.position.distance(other.position) < self.radius
-    }
+
 }
 
 pub(crate) trait Render {
@@ -154,7 +151,7 @@ impl Runtime {
 
         // Create a window
         let window = video
-            .window("car-rust", WIDTH, HEIGHT)
+            .window("bus-zombie-rust", WIDTH, HEIGHT)
             .resizable()
             .opengl()
             .position_centered()
@@ -181,16 +178,14 @@ impl Runtime {
         let player = CarMainPlayer::new(&gl);
 
         let start_block = Instant::now();
-        let opengl_shadow = OpenglShadow::new(&gl);
+        //let opengl_shadow = OpenglShadow::new(&gl);
         let duration = start_block.elapsed();
         println!("Time elapsed in openglshadow is: {:?}", duration);
-
-        //let draw_text = Runtime::setup_text_if_not_loaded(&gl);
 
 
         //let opengl_shadow = OpenglShadowPointAllDirections::new(&gl);
         let runtime = Runtime {
-            opengl_shadow,
+            //opengl_shadow,
             no_shadow_shader: create_shader(&gl, SKYBOX_VS, SKYBOX_FS, None),
             loaded: false,
             now: Instant::now(),
@@ -408,10 +403,11 @@ impl Runtime {
             self.ground.as_mut().unwrap().update(&self.gl, self.player_avitar.movement_collision.position, self.camera_angle, update_delta);
         }
 
-
+/*
         self.opengl_shadow.update_light_pos(
             self.player_avitar.movement_collision.position.x, 6.0, self.player_avitar.movement_collision.position.z,
             self.camera_angle);
+ */
 
         self.special_effects.update(update_delta, &self.ground.as_ref().unwrap());
 
@@ -440,11 +436,11 @@ impl Runtime {
                 if self.draw_text.is_some() {
                     let under_landscape = self.ground.as_ref().unwrap().currently_under_landscape(self.player_avitar.movement_collision.position.x, self.player_avitar.movement_collision.position.z);
 
-                    let compass = match self.camera_angle {
-                        0.0 => "North",
-                        180.0 => "South",
-                        90.0 => "East",
-                        270.0 => "West",
+                    let compass = match self.camera_angle as i32 {
+                        0 => "North",
+                        180 => "South",
+                        90 => "East",
+                        270 => "West",
                         _ => ""
                     };
 
@@ -454,7 +450,7 @@ impl Runtime {
                     self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, HEIGHT as f32 - 60.0, vec3(1.0, 1.0, 0.0), 1.0);
 
                     let status = format!("road={} {}", under_landscape.filename,self.player_avitar.msg);
-                    self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, 60.0, vec3(1.0, 1.0, 0.0), 1.0);
+                    self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, 0.0, vec3(1.0, 1.0, 0.0), 1.0);
                     if self.flash_message_countdown > 0 {
                         self.flash_message_countdown = self.flash_message_countdown -1;
                         let mut screen_y = HEIGHT as f32 * 0.75;
@@ -507,7 +503,7 @@ impl Runtime {
                         self.flash_message_countdown = 60;
                     }
             }
-            self.player_avitar.update(update_delta, &self.ground.as_ref().unwrap(), &self.camera, self.tick, &mut self.special_effects);
+            self.player_avitar.update(update_delta, &self.ground.as_ref().unwrap(), &self.camera, self.tick,);
         }
 
         self.camera.save_position();
@@ -613,6 +609,7 @@ impl Runtime {
         return instances;
     }
 
+    /*
     fn slow_performance_render_shadow(&mut self, projection: &Matrix4<f32>, view: &Matrix4<f32>) {
         self.opengl_shadow.start_render_shadow(&self.gl);
         self.player_avitar.render(&self.gl, &view, &projection, self.opengl_shadow.simple_depth_shader);
@@ -626,4 +623,5 @@ impl Runtime {
         self.special_effects.render(&self.gl, &view, &projection, self.opengl_shadow.shader);
         self.sky_box.render(&self.gl, &view, &projection, self.player_avitar.movement_collision.position);
     }
+     */
 }

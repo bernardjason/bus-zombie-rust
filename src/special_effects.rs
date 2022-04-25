@@ -6,7 +6,6 @@ use crate::game::{GROUND, MovementAndCollision, Render, Update};
 use crate::ground::Ground;
 use rand::Rng;
 use crate::gl_helper::texture::create_texture_png;
-use std::time::Instant;
 use rand::prelude::ThreadRng;
 
 pub struct SpecialEffects {
@@ -63,7 +62,7 @@ impl SpecialEffects {
         }
     }
 
-    fn create_explosion_block(&mut self, mut position: Vector3<f32>, mut rng: ThreadRng,scale:f32,ticks:i32,texture_list:Vec<u32>) {
+    fn create_explosion_block(&mut self, position: Vector3<f32>, mut rng: ThreadRng,scale:f32,ticks:i32,texture_list:Vec<u32>) {
         let direction: Vector3<f32> = vec3(
             rng.gen_range(-0.2, 0.2),
             rng.gen_range(0.2, 0.7),
@@ -82,21 +81,7 @@ impl SpecialEffects {
         };
         self.instances.push(instance);
     }
-    pub fn thrust(&mut self, position: Vector3<f32>, direction: Vector3<f32>, _delta: f32) {
 
-        let mut rng = rand::thread_rng();
-        let instance = SpecialInstance {
-            id: get_next_id(),
-            direction,
-            collision: MovementAndCollision::new(0.0, position),
-            ticks: 15,
-            scale:rng.gen_range(8.0,12.0),
-            speed:0.0,
-            tex_index:0,
-            textures:vec![self.cube.texture,self.yellow],
-        };
-        self.instances.push(instance);
-    }
 
     pub fn _fire(&mut self, mut position: Vector3<f32>, direction: Vector3<f32>, delta: f32, radius: f32,speed:f32) {
         position += direction * delta * speed;
