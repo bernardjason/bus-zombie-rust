@@ -141,7 +141,7 @@ impl Passenger {
             zombie_explode = true;
             self.set_to_explode();
         }
-        if self.zombie && self.zombie_countdown < -20.0 && ! self.zombie_exploding {
+        if self.zombie && self.zombie_countdown < -100.0 && ! self.zombie_exploding {
             self.set_to_explode();
         }
         if self.zombie_exploding && self.zombie_countdown <= 0.0 {
@@ -151,19 +151,9 @@ impl Passenger {
         self.workout_my_direction(ground, chase_target, old_pos, original_matrix, distance);
 
         self.turn_around_update(original_matrix);
-/*
-        let hit_scenery = ground.scenery_at(self.movement_collision.position.x, self.movement_collision.position.z);
-        hit_scenery.map(|l| {
-            self.msg = format!("HIT!!!!!!! Over  {:?} {} {}", l.scenery_type, l.position.x, l.position.z);
-            self.matrix = original_matrix * self.rotation_y_axis * self.rotation_x_axis;
-            self.update_position();
-        });
- */
-
 
         let ground_height = ground.position_height(self.movement_collision.position.x, self.movement_collision.position.z);
         let ground_height_ahead = ground.position_height(self.movement_collision.position.x, self.movement_collision.position.z);
-
 
         if !self.zombie_exploding {
             if self.movement_collision.position.y < ground_height_ahead + MODEL_HEIGHT {

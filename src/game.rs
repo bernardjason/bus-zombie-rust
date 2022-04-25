@@ -449,7 +449,7 @@ impl Runtime {
                     let status = format!("humans={} off_road={} ", humans, self.player_avitar.off_road.round());
                     self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, HEIGHT as f32 - 60.0, vec3(1.0, 1.0, 0.0), 1.0);
 
-                    let status = format!("road={} {}", under_landscape.filename,self.player_avitar.msg);
+                    let status = format!("road={} {} {}", under_landscape.filename,self.player_avitar.msg,self.rate_debug);
                     self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, 2.0, 0.0, vec3(1.0, 1.0, 0.0), 1.0);
                     if self.flash_message_countdown > 0 {
                         self.flash_message_countdown = self.flash_message_countdown -1;
@@ -466,7 +466,10 @@ impl Runtime {
                 }
             }
         } else {
-            let where_x = (self.tick / 100000) as f32 % (WIDTH as f32 * 1.25) - 100.0;
+            #[cfg(target_os = "emscripten")]
+            let where_x = (self.tick as f32 ) % (WIDTH as f32 * 1.25) - 100.0;
+            #[cfg(not(target_os = "emscripten"))]
+            let where_x = (self.tick as f32  / 100000.0) % (WIDTH as f32 * 1.25) - 100.0;
             self.draw_text.as_ref().unwrap().draw_text(&self.gl, "Game over...", where_x, HEIGHT as f32 * 0.75, vec3(1.0, 1.0, 0.0), 2.0);
             let status = format!("score={}", self.score, );
             self.draw_text.as_ref().unwrap().draw_text(&self.gl, &status, where_x, HEIGHT as f32 * 0.5, vec3(1.0, 1.0, 0.0), 2.0);
@@ -493,14 +496,17 @@ impl Runtime {
                     if zombie_explode {
                         self.lives = self.lives - 1;
                         self.flash_message.push(String::from("zombie exploded near you"));
-                        self.flash_message_countdown = 60;
-                        self.player_avitar.reset();
+                        self.flash_message_countdown = 100;
+                        //self.player_avitar.reset(); // dont reset as miss explosion
+                        let mut over_bus = self.player_avitar.movement_collision.position.clone();
+                        over_bus.y = over_bus.y + 0.3;
+                        self.special_effects.explosion(over_bus);
                     }
                     if self.player_avitar.off_road_too_much() {
                         play(EXPLOSION);
                         self.lives = self.lives - 1;
                         self.flash_message.push(String::from("off road too long"));
-                        self.flash_message_countdown = 60;
+                        self.flash_message_countdown = 100;
                     }
             }
             self.player_avitar.update(update_delta, &self.ground.as_ref().unwrap(), &self.camera, self.tick,);
